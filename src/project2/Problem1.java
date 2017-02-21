@@ -3,7 +3,6 @@ package project2;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.StringTokenizer;
 
@@ -43,13 +42,12 @@ public class Problem1 {
 	}
 	
 
-	public static class Problem1Reducer extends Reducer<IntWritable, Text, Text, Text> {
-		
+	public static class Problem1Reducer extends Reducer<IntWritable, Text, Text, Text> {		
 
 		private static HashMap<String, String> result = new HashMap<String, String>();
 
 		public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			HashMap<String, String> rects = new HashMap<String, String>();
+			ArrayList<String> rects = new ArrayList<String>();
 			ArrayList<String> points = new ArrayList<String>();
 
 			// Initiate rects and points
@@ -59,42 +57,36 @@ public class Problem1 {
 					points.add(value.toString());
 				}
 				if (s.length == 5) {
-					rects.put(value.toString(), "");
+					rects.add(value.toString());
 				}
 			}
-
-			// Join points into rects
-			Set<String> keySet = rects.keySet();
+			
+			// Join points with rects
 			for (String point : points) {
 				String[] p = point.split(",");
 				float px = Float.parseFloat(p[0]);
 				float py = Float.parseFloat(p[1]);
 
-				for (String k : keySet) {
-					String[] r = k.split(",");
-					float rx = Float.parseFloat(r[1]);
+				for (String rect : rects) {
+					String[] r = rect.split(",");
 					float ry = Float.parseFloat(r[2]);
-					float rx2 = rx + Float.parseFloat(r[4]);
+					if(py > ry)
+						continue;
 					float ry2 = ry - Float.parseFloat(r[3]);
-					if (px >= rx && px <= rx2 && py <= ry && py >= ry2) {
-						if (rects.get(k) == "")
-							rects.put(k, "("+point+")");
+					if(py < ry2)
+						continue;
+					float rx = Float.parseFloat(r[1]);
+					if(px < rx)
+						continue;
+					float rx2 = rx + Float.parseFloat(r[4]);
+					if (px <= rx2) {
+						if (result.get(r[0]) != null)
+							result.put(r[0], result.get(r[0]) + "," + "("+point+")");
 						else
-							rects.put(k, rects.get(k) + "," + "("+point+")");
+							result.put(r[0], "("+point+")");
 					}
 				}
-			}
-
-			// add rects(local) into result(global)
-			for (String v : keySet) {
-				String[] rect = v.split(",");
-				if (rects.get(v) == "")
-					continue;
-				if (result.get(rect[0]) != null)
-					result.put(rect[0], result.get(rect[0]) + "," + rects.get(v));
-				else
-					result.put(rect[0], rects.get(v));
-			}
+			}			
 		}
 
 		protected void cleanup(Context context) throws IOException, InterruptedException {
