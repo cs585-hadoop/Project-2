@@ -80,8 +80,9 @@ public class Problem1 {
 						continue;
 					float rx2 = rx + Float.parseFloat(r[4]);
 					if (px <= rx2) {
-						if (result.get(r[0]) != null)
-							result.put(r[0], result.get(r[0]) + "," + "("+point+")");
+						String temp = result.get(r[0]);
+						if (temp != null)
+							result.put(r[0], temp + ",("+point+")");
 						else
 							result.put(r[0], "("+point+")");
 					}
