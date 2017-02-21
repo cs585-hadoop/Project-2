@@ -2,6 +2,8 @@ package project2;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -40,13 +42,38 @@ public class Problem1 {
 			}
 		}
 	}
-	
 
-	public static class Problem1Reducer extends Reducer<IntWritable, Text, Text, Text> {		
+	public static class Problem1Reducer extends Reducer<IntWritable, Text, Text, Text> {
 
 		private static HashMap<String, String> result = new HashMap<String, String>();
+		Comparator<String> pc = new Comparator<String>() {
+			@Override
+			public int compare(String s1, String s2) {
+				String[] s1s = s1.split(",");
+				String[] s2s = s2.split(",");
+				Float y1 = Float.parseFloat(s1s[1]);
+				Float y2 = Float.parseFloat(s2s[1]);
+				return y2.compareTo(y1);
+			}
+		};
+		Comparator<String> rc = new Comparator<String>() {
+			@Override
+			public int compare(String s1, String s2) {
+				String[] s1s = s1.split(",");
+				String[] s2s = s2.split(",");
+				Float y1 = Float.parseFloat(s1s[2]);
+				Float y2 = Float.parseFloat(s2s[2]);
+				Float h1 = Float.parseFloat(s1s[4]);
+				Float h2 = Float.parseFloat(s2s[4]);
+				if (y1.equals(y2))
+					return h2.compareTo(h1);
+				else
+					return y2.compareTo(y1);
+			}
+		};
 
-		public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+		public void reduce(IntWritable key, Iterable<Text> values, Context context)
+				throws IOException, InterruptedException {
 			ArrayList<String> rects = new ArrayList<String>();
 			ArrayList<String> points = new ArrayList<String>();
 
@@ -60,8 +87,40 @@ public class Problem1 {
 					rects.add(value.toString());
 				}
 			}
-			
+
+			Collections.sort(points, pc);
+			Collections.sort(rects, rc);
+
 			// Join points with rects
+			int start = 0;
+			for (String rect : rects) {
+				String[] r = rect.split(",");
+				float ry = Float.parseFloat(r[2]);
+				float ry2 = ry - Float.parseFloat(r[4]);
+				float rx = Float.parseFloat(r[1]);
+				float rx2 = rx + Float.parseFloat(r[3]);
+				for (int i = start; i < points.size(); i++) {
+					String point = points.get(i);
+					String[] p = point.split(",");
+					float px = Float.parseFloat(p[0]);
+					float py = Float.parseFloat(p[1]);
+					if (py > ry) {
+						start = i;
+						continue;
+					}
+					if (py < ry2) {
+						break;
+					}
+					if (px < rx || px > rx2)
+						continue;
+					String temp = result.get(r[0]);
+					if (temp != null)
+						result.put(r[0], temp + ",(" + point + ")");
+					else
+						result.put(r[0], "(" + point + ")");		
+				}
+			}
+/*
 			for (String point : points) {
 				String[] p = point.split(",");
 				float px = Float.parseFloat(p[0]);
@@ -70,24 +129,25 @@ public class Problem1 {
 				for (String rect : rects) {
 					String[] r = rect.split(",");
 					float ry = Float.parseFloat(r[2]);
-					if(py > ry)
+					if (py > ry)
 						continue;
 					float ry2 = ry - Float.parseFloat(r[3]);
-					if(py < ry2)
+					if (py < ry2)
 						continue;
 					float rx = Float.parseFloat(r[1]);
-					if(px < rx)
+					if (px < rx)
 						continue;
 					float rx2 = rx + Float.parseFloat(r[4]);
 					if (px <= rx2) {
 						String temp = result.get(r[0]);
 						if (temp != null)
-							result.put(r[0], temp + ",("+point+")");
+							result.put(r[0], temp + ",(" + point + ")");
 						else
-							result.put(r[0], "("+point+")");
+							result.put(r[0], "(" + point + ")");
 					}
 				}
-			}			
+			}
+*/
 		}
 
 		protected void cleanup(Context context) throws IOException, InterruptedException {
