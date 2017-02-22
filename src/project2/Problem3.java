@@ -89,6 +89,24 @@ public class Problem3 {
 		}
 
 }
+	public static class Q2Combiner extends Reducer<IntWritable, Text, IntWritable, Text> {
+		private Text result = new Text();
+
+		public void reduce(IntWritable key, Iterable<Text> values, Context context) 
+				throws IOException, InterruptedException {
+			float sum_x=0,sum_y=0;
+			int count=0;
+			for(Text value:values){
+				float x=Integer.parseInt(value.toString().split(",")[0]);
+				float y=Integer.parseInt(value.toString().split(",")[1].split(":")[0]);
+				sum_x+=x;
+				sum_y+=y;
+				count++;
+			}
+			context.write(key,new Text(sum_x+","+sum_y+":"+count));
+			
+		}
+	}
 	public static class Problem3Reducer extends Reducer<IntWritable, Text, IntWritable, Text> {
 
 		
