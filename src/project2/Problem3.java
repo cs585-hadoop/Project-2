@@ -1,6 +1,7 @@
 package project2;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -12,8 +13,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
@@ -32,17 +35,18 @@ public class Problem3 {
 	public static class Problem3Mapper extends Mapper<Object, Text, IntWritable, Text> {
 		private Text word = new Text();
 		private static BufferedReader reader;
-
+		@Override
 		protected void setup(Context context)  throws IOException,InterruptedException,FileNotFoundException {
 		if(counter==1){
 			Path[] cacheFilesLocal = DistributedCache.getLocalCacheFiles(context.getConfiguration());
 			for (Path eachPath : cacheFilesLocal) {
-				
-				if (eachPath.getName().toString().trim().equals("seed.txt")) {
+				if (eachPath.getName().toString().trim().equals("seeds.txt")) {
 					loadSeedHashMap(eachPath, context);
 				}
 			}
 		}
+		
+		
 		}	
 		
 		private void loadSeedHashMap(Path p, Context context) throws IOException,FileNotFoundException{
@@ -64,7 +68,7 @@ public class Problem3 {
 			int closeIndex=0;
 			while (itr.hasMoreTokens()) {
 				
-				word.set(itr.nextToken()+":1");
+				word.set(itr.nextToken());
 				String[] input=word.toString().split(",");
 				Float x=Float.parseFloat(input[0]);
 				Float y=Float.parseFloat(input[1]);
@@ -83,25 +87,25 @@ public class Problem3 {
 						min=distance;
 					}
 				}
-				context.write(new IntWritable(closeIndex),word);
+				context.write(new IntWritable(closeIndex),new  Text(word.toString()+":1"));
 			}
 			
 		}
 
 }
-	public static class Q2Combiner extends Reducer<IntWritable, Text, IntWritable, Text> {
-		private Text result = new Text();
+	public static class P3Combiner extends Reducer<IntWritable, Text, IntWritable, Text> {
 
 		public void reduce(IntWritable key, Iterable<Text> values, Context context) 
 				throws IOException, InterruptedException {
 			float sum_x=0,sum_y=0;
 			int count=0;
 			for(Text value:values){
-				float x=Integer.parseInt(value.toString().split(",")[0]);
-				float y=Integer.parseInt(value.toString().split(",")[1].split(":")[0]);
+				float x=Float.parseFloat(value.toString().split(",")[0]);
+				float y=Float.parseFloat(value.toString().split(",")[1].split(":")[0]);
+				count+=Integer.parseInt(value.toString().split(",")[1].split(":")[1]);
 				sum_x+=x;
 				sum_y+=y;
-				count++;
+				
 			}
 			context.write(key,new Text(sum_x+","+sum_y+":"+count));
 			
@@ -118,8 +122,8 @@ public class Problem3 {
 			int count=0;
 			
 			for(Text value:values){
-				float x=Integer.parseInt(value.toString().split(",")[0]);
-				float y=Integer.parseInt(value.toString().split(",")[1].split(":")[0]);
+				float x=Float.parseFloat(value.toString().split(",")[0]);
+				float y=Float.parseFloat(value.toString().split(",")[1].split(":")[0]);
 				count+=Integer.parseInt(value.toString().split(",")[1].split(":")[1]);
 				sum_x+=x;
 				sum_y+=y;
@@ -133,12 +137,13 @@ public class Problem3 {
 				kseed.put(key.get(), new Float[]{mean_x,mean_y});
 				flag_change=true;	
 			}
-			
 
 		}
 
 		protected void cleanup(Context context) throws IOException, InterruptedException {
-			if(!flag_change && counter==5){
+		
+			if((!flag_change) || counter==5){
+				System.out.println(kseed.toString());
 				for(int index:kseed.keySet()){
 					context.write(new IntWritable(index),new Text(kseed.get(index)[0]+","+kseed.get(index)[1]));
 				}
@@ -157,32 +162,47 @@ public class Problem3 {
 		conf.set("mapred.textoutputformat.separator", ",");
 		// TODO:add cache files
 		DistributedCache.addCacheFile(new Path(args[2]).toUri(), conf);
+		Path outputPath=new Path(args[1]);
+		Path inputPath=new Path(args[0]);		
 		
 		Job job = new Job(conf, "k-means");
 		job.setJarByClass(Problem3.class);
 		job.setMapperClass(Problem3Mapper.class);
+		job.setCombinerClass(P3Combiner.class);
 		job.setReducerClass(Problem3Reducer.class);
 		job.setNumReduceTasks(2);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(Text.class);
-		FileInputFormat.addInputPath(job, new Path(args[0]));
-		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		FileSystem fs = FileSystem.get(conf);
+
+		if (fs.exists(outputPath)) {
+			fs.delete(outputPath, true);
+		}
+		
+		FileInputFormat.addInputPath(job, inputPath);
+		FileOutputFormat.setOutputPath(job, outputPath);
 		job.waitForCompletion(true);
 		
-		while(flag_change && counter!=5){
+		while(flag_change && counter<=5){
 			flag_change=false;
 			job = new Job(conf, "k-means");
+			
+			if (fs.exists(outputPath)) {
+				fs.delete(outputPath, true);
+			}
+			
 			job.setJarByClass(Problem3.class);
 			job.setMapperClass(Problem3Mapper.class);
 			job.setReducerClass(Problem3Reducer.class);
+			job.setCombinerClass(P3Combiner.class);
 			job.setNumReduceTasks(2);
 			job.setOutputKeyClass(IntWritable.class);
 			job.setOutputValueClass(Text.class);
 			FileInputFormat.addInputPath(job, new Path(args[0]));
 			FileOutputFormat.setOutputPath(job, new Path(args[1]));
-			job.waitForCompletion(true);
+			job.waitForCompletion(true);	
 			counter++;
-		}
+	}
 		
 		
 	}
