@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
@@ -82,7 +80,6 @@ public class Problem1 {
 
 	public static class Problem1Reducer extends Reducer<IntWritable, Text, Text, Text> {
 
-		private static HashMap<String, String> result = new HashMap<String, String>();
 		Comparator<String> pc = new Comparator<String>() {
 			@Override
 			public int compare(String s1, String s2) {
@@ -150,19 +147,8 @@ public class Problem1 {
 					}
 					if (px < rx || px > rx2)
 						continue;
-					if (result.get(r[0]) != null)
-						result.put(r[0], result.get(r[0]) + ",(" + point + ")");
-					else
-						result.put(r[0], "(" + point + ")");
+					context.write(new Text(String.format("%-8s", r[0])), new Text("(" + point + ")"));
 				}
-			}
-
-		}
-
-		protected void cleanup(Context context) throws IOException, InterruptedException {
-			Set<String> keyResult = result.keySet();
-			for (String key : keyResult) {
-				context.write(new Text(key), new Text(result.get(key)));
 			}
 		}
 	}
@@ -177,8 +163,10 @@ public class Problem1 {
 		job.setJarByClass(Problem1.class);
 		job.setMapperClass(Problem1Mapper.class);
 		job.setReducerClass(Problem1Reducer.class);
-		job.setNumReduceTasks(2);
-		job.setOutputKeyClass(IntWritable.class);
+		//job.setNumReduceTasks(2);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(Text.class);
+		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		if (args.length == 3)
 			param = args[2];
