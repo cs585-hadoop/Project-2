@@ -30,7 +30,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 public class Problem3 {
 	private static HashMap<Integer,Float[]> kseed=new HashMap<>();
 	private static HashMap<Integer,String> previous_val=new HashMap<>();
-	
+	private static float delta=(float) 0.00001;
 	private static int counter=1;
 	private static boolean flag_change=false;
 
@@ -139,20 +139,20 @@ public class Problem3 {
 			Float[] seed=kseed.get(key.get());
 			System.out.println(seed[0]+","+seed[1]+"::"+mean_x+","+mean_y);
 
-			if(!(seed[0]==mean_x && seed[1]==mean_y)){
+			if(!(Math.abs(seed[0].floatValue()-mean_x)<delta && Math.abs(seed[1].floatValue()-mean_y)<delta)){
+
 				flag_change=true;
-				
 				if(previous_val.containsKey(index)){
 					String value=previous_val.get(index);
 					previous_val.put(index, value+":"+seed[0]+","+seed[1]);
 					
 				}
 				else{
-				
+				    
 					previous_val.put(index,seed[0]+","+seed[1]);
 				}
-				
-				kseed.put(key.get(), new Float[]{mean_x,mean_y});	
+
+				kseed.put(index, new Float[]{mean_x,mean_y});	
 				
 			}
 
@@ -162,10 +162,10 @@ public class Problem3 {
 		    
 			if((!flag_change) || counter==5){
 				for(int index:kseed.keySet()){
-					context.write(new IntWritable(index),new Text(kseed.get(index)[0]+","+kseed.get(index)[1]));
+					context.write(new IntWritable(index),new Text(kseed.get(index)[0]+","+kseed.get(index)[1]+"::"+counter+"th iteration result"));
 					String[] values=previous_val.get(index).split(":");
-					for(int i=0;i<values.length;i++){
-						context.write(new IntWritable(index),new Text(values[i]));
+					for(int i=values.length-1;i>=0;i--){
+						context.write(new IntWritable(index),new Text(values[i]+"::"+i+"th value"));
 					}
 				}
 			}
@@ -203,8 +203,8 @@ public class Problem3 {
 		FileInputFormat.addInputPath(job, inputPath);
 		FileOutputFormat.setOutputPath(job, outputPath);
 		job.waitForCompletion(true);
-		
-		while(flag_change && counter<=1){
+		counter++;
+		while(flag_change && counter<=5){
 			
 			flag_change=false;
 			job = new Job(conf, "k-means");
