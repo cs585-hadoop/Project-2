@@ -29,6 +29,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Problem3 {
 	private static HashMap<Integer,Float[]> kseed=new HashMap<>();
+	private static HashMap<Integer,String> previous_val=new HashMap<>();
+	
 	private static int counter=1;
 	private static boolean flag_change=false;
 
@@ -45,6 +47,7 @@ public class Problem3 {
 				}
 			}
 		}
+
 		
 		
 		}	
@@ -113,8 +116,6 @@ public class Problem3 {
 	}
 	public static class Problem3Reducer extends Reducer<IntWritable, Text, IntWritable, Text> {
 
-		
-
 		public void reduce(IntWritable key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 			float mean_x=0,mean_y=0;
@@ -122,30 +123,50 @@ public class Problem3 {
 			int count=0;
 			
 			for(Text value:values){
-				float x=Float.parseFloat(value.toString().split(",")[0]);
-				float y=Float.parseFloat(value.toString().split(",")[1].split(":")[0]);
-				count+=Integer.parseInt(value.toString().split(",")[1].split(":")[1]);
+				
+				float x = Float.parseFloat(value.toString().split(",")[0]);
+				float y = Float.parseFloat(value.toString().split(",")[1].split(":")[0]);
+				count += Integer.parseInt(value.toString().split(",")[1].split(":")[1]);
 				sum_x+=x;
 				sum_y+=y;
+				
 			}
 			
 			mean_x=sum_x/count;
 			mean_y=sum_y/count;
 			
+			int index=key.get();
 			Float[] seed=kseed.get(key.get());
+			System.out.println(seed[0]+","+seed[1]+"::"+mean_x+","+mean_y);
+
 			if(!(seed[0]==mean_x && seed[1]==mean_y)){
-				kseed.put(key.get(), new Float[]{mean_x,mean_y});
-				flag_change=true;	
+				flag_change=true;
+				
+				if(previous_val.containsKey(index)){
+					String value=previous_val.get(index);
+					previous_val.put(index, value+":"+seed[0]+","+seed[1]);
+					
+				}
+				else{
+				
+					previous_val.put(index,seed[0]+","+seed[1]);
+				}
+				
+				kseed.put(key.get(), new Float[]{mean_x,mean_y});	
+				
 			}
 
 		}
 
 		protected void cleanup(Context context) throws IOException, InterruptedException {
-		
+		    
 			if((!flag_change) || counter==5){
-				System.out.println(kseed.toString());
 				for(int index:kseed.keySet()){
 					context.write(new IntWritable(index),new Text(kseed.get(index)[0]+","+kseed.get(index)[1]));
+					String[] values=previous_val.get(index).split(":");
+					for(int i=0;i<values.length;i++){
+						context.write(new IntWritable(index),new Text(values[i]));
+					}
 				}
 			}
 			
@@ -159,7 +180,7 @@ public class Problem3 {
 			System.err.println("Usage: Query-4 <HDFS input file> <HDFS output file> <HDFS cache file>");
 			System.exit(2);
 		}
-		conf.set("mapred.textoutputformat.separator", ",");
+		
 		// TODO:add cache files
 		DistributedCache.addCacheFile(new Path(args[2]).toUri(), conf);
 		Path outputPath=new Path(args[1]);
@@ -173,8 +194,8 @@ public class Problem3 {
 		job.setNumReduceTasks(2);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(Text.class);
+		
 		FileSystem fs = FileSystem.get(conf);
-
 		if (fs.exists(outputPath)) {
 			fs.delete(outputPath, true);
 		}
@@ -183,7 +204,8 @@ public class Problem3 {
 		FileOutputFormat.setOutputPath(job, outputPath);
 		job.waitForCompletion(true);
 		
-		while(flag_change && counter<=5){
+		while(flag_change && counter<=1){
+			
 			flag_change=false;
 			job = new Job(conf, "k-means");
 			
