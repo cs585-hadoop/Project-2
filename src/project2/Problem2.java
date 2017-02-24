@@ -18,13 +18,16 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 public class Problem2 {
 	public static class Problem2Mapper extends Mapper<Object, Text, Text, IntWritable> {
 		private final static IntWritable one = new IntWritable(1);
-		Pattern pattern = Pattern.compile("\"Flags.*?,");
+		
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+			Pattern pattern = Pattern.compile("\"Flags.*?,");
 			Matcher matcher=pattern.matcher(value.toString());
-			matcher.find();
-			String flagNum=value.toString().substring(matcher.start(),matcher.end());
-			String[] s= flagNum.split(":");
-			context.write(new Text(s[1]), one);			
+			if(matcher.find()){
+				String flagNum=value.toString().substring(matcher.start(),matcher.end()-1);
+				String[] s= flagNum.split(":");
+				s[1]=s[1].trim();
+				context.write(new Text(s[1]), one);
+			}
 		}
 	}
 
@@ -59,7 +62,7 @@ public class Problem2 {
 		job.setJarByClass(Problem2.class);
 		job.setMapperClass(Problem2Mapper.class);
 		job.setCombinerClass(Problem2Reducer.class);
-		//job.setReducerClass(Problem2Reducer.class);
+		job.setReducerClass(Problem2Reducer.class);
 		// job.setNumReduceTasks(2);
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(IntWritable.class);
