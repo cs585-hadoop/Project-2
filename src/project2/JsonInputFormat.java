@@ -77,8 +77,6 @@ class JsonRecordReader extends RecordReader<LongWritable, Text> {
 	private LineRecordReader line = new LineRecordReader();
 	private LongWritable key;
 	private Text value = new Text();
-	static int count = 0;
-	static String splited = "";
 
 	@Override
 	public void close() throws IOException {
@@ -114,17 +112,14 @@ class JsonRecordReader extends RecordReader<LongWritable, Text> {
 		Matcher matcher;
 		while (line.nextKeyValue()) {
 			key = line.getCurrentKey();
-			if (splited.length() > 0) {
-				value.append(splited.getBytes(), 0, splited.getBytes().length);
-			}
 			value.append(line.getCurrentValue().toString().getBytes(), 0, line.getCurrentValue().toString().length());
 			matcher = pattern.matcher(line.getCurrentValue().toString());
-			if (matcher.matches()) {
-				splited = "";
+			if (matcher.matches())
 				return true;
-			}
 		}
-		splited = value.toString();
+		if (value.toString().length() > 0) {
+			return true;
+		}
 		return false;
 	}
 }

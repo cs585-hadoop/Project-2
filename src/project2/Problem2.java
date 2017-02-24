@@ -16,17 +16,24 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Problem2 {
+
 	public static class Problem2Mapper extends Mapper<Object, Text, Text, IntWritable> {
 		private final static IntWritable one = new IntWritable(1);
-		
+
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-			Pattern pattern = Pattern.compile("\"Flags.*?,");
-			Matcher matcher=pattern.matcher(value.toString());
-			if(matcher.find()){
-				String flagNum=value.toString().substring(matcher.start(),matcher.end()-1);
-				String[] s= flagNum.split(":");
-				s[1]=s[1].trim();
+			Pattern pattern = Pattern.compile("Flags.*?,");
+			Matcher matcher = pattern.matcher(value.toString());
+			if (matcher.find()) {
+				String flagNum = value.toString().substring(matcher.start(), matcher.end() - 1);
+				String[] s = flagNum.split(":");
+				s[1] = s[1].trim();
 				context.write(new Text(s[1]), one);
+				if(value.toString().lastIndexOf("Flags")!=matcher.start()){
+					flagNum = value.toString().substring(value.toString().lastIndexOf("Flags"), value.toString().lastIndexOf(","));
+					s = flagNum.split(":");
+					s[1] = s[1].trim();
+					context.write(new Text(s[1]), one);
+				}
 			}
 		}
 	}
@@ -40,10 +47,6 @@ public class Problem2 {
 				sum += val.get();
 			}
 			context.write(key, new IntWritable(sum));
-		}
-		@Override
-		protected void cleanup(Reducer<Text, IntWritable, Text, IntWritable>.Context context)
-				throws IOException, InterruptedException {
 		}
 	}
 
