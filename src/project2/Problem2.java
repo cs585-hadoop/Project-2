@@ -28,12 +28,6 @@ public class Problem2 {
 				String[] s = flagNum.split(":");
 				s[1] = s[1].trim();
 				context.write(new Text(s[1]), one);
-				if(value.toString().lastIndexOf("Flags")!=matcher.start()){
-					flagNum = value.toString().substring(value.toString().lastIndexOf("Flags"), value.toString().lastIndexOf(","));
-					s = flagNum.split(":");
-					s[1] = s[1].trim();
-					context.write(new Text(s[1]), one);
-				}
 			}
 		}
 	}
