@@ -40,7 +40,7 @@ public class Problem3v1{
 				
 				for (Path eachPath : cacheFilesLocal) {
 					if (eachPath.getName().toString().trim().equals("seeds.txt")) {
-						loadSeedHashMap(eachPath, context,true);
+						loadSeedHashMap(eachPath, context);
 					}
 				}
 			}
@@ -49,7 +49,7 @@ public class Problem3v1{
 				for (Path eachPath : cacheFilesLocal) {
 					System.out.println(eachPath.toString());
 					if (eachPath.getName().startsWith("part")) {
-						loadSeedHashMap(eachPath, context,false);
+						loadSeedHashMap(eachPath, context);
 					}
 				}	
 			}
@@ -58,7 +58,7 @@ public class Problem3v1{
 		
 		    
 			
-			private void loadSeedHashMap(Path p, Context context,boolean flag) throws IOException,FileNotFoundException{
+			private void loadSeedHashMap(Path p, Context context) throws IOException,FileNotFoundException{
 				reader=new BufferedReader(new FileReader(p.toString()));
 				String inputline=reader.readLine();
 				String[] input;
@@ -101,8 +101,27 @@ public class Problem3v1{
 		}
 		
 		}
+	
+	public static class Problem3v1Combiner extends Reducer<Text, Text, Text, Text> {
 
-	public static class Problem3v1Reducer extends Reducer<Text, Text, Text, IntWritable> {
+		public void reduce(Text key, Iterable<Text> values, Context context) 
+				throws IOException, InterruptedException {
+			float sum_x=0,sum_y=0;
+			int count=0;
+			for(Text value:values){
+				float x=Float.parseFloat(value.toString().split(",")[0]);
+				float y=Float.parseFloat(value.toString().split(",")[1].split(":")[0]);
+				count+=Integer.parseInt(value.toString().split(",")[1].split(":")[1]);
+				sum_x+=x;
+				sum_y+=y;
+				
+			}
+			context.write(key,new Text(sum_x+","+sum_y+":"+count));
+			
+		}
+	}
+
+	public static class Problem3v1Reducer extends Reducer<Text, Text, Text, Text> {
 		boolean flag;
 		private static float delta=(float) 0.001;
 		public void reduce(Text key, Iterable<Text> values, Context context)
@@ -130,12 +149,12 @@ public class Problem3v1{
 
 			if(!((Math.abs( Float.parseFloat(seed[0])-mean_x)<delta) && (Math.abs(Float.parseFloat(seed[1])-mean_y)<delta))){
 
-				context.write(new Text(mean_x+","+mean_y), new IntWritable(1));
+				context.write(new Text(mean_x+","+mean_y), new Text("1"));
 				
 			}
 			else
 			{
-				context.write(new Text(mean_x+","+mean_y), new IntWritable(0));
+				context.write(new Text(mean_x+","+mean_y), new Text("0"));
 			}
 		
 		}
@@ -158,8 +177,8 @@ public class Problem3v1{
 		Path inputPath = new Path(args[0]);
         Path basePath = new Path(args[1] + "_iterations");
         
-		if (fs.exists(new Path(args[1]))) {
-			fs.delete(new Path(args[1]), true);
+		if (fs.exists(basePath)) {
+			fs.delete(basePath, true);
 		}
 
 		if (args.length != 3) {
@@ -172,7 +191,7 @@ public class Problem3v1{
 		Job job = new Job(conf, "iterations_"+counter);
 		job.setJarByClass(Problem3v1.class);
 		job.setMapperClass(Problem3v1Mapper.class);
-		//job.setCombinerClass(Problem3v1Reducer.class);
+		job.setCombinerClass(Problem3v1Combiner.class);
 		job.setReducerClass(Problem3v1Reducer.class);
 	    job.setNumReduceTasks(2);
 		job.setMapOutputKeyClass(Text.class);
@@ -197,13 +216,13 @@ public class Problem3v1{
 			job = new Job(conf, "iterations_"+counter);
 			job.setJarByClass(Problem3v1.class);
 			job.setMapperClass(Problem3v1Mapper.class);
-			//job.setCombinerClass(Problem3v1Reducer.class);
+			job.setCombinerClass(Problem3v1Combiner.class);
 			job.setReducerClass(Problem3v1Reducer.class);
 		    job.setNumReduceTasks(2);
 			job.setMapOutputKeyClass(Text.class);
 			job.setMapOutputValueClass(Text.class);
 			job.setOutputKeyClass(Text.class);
-			job.setOutputValueClass(IntWritable.class);
+			job.setOutputValueClass(Text.class);
 			FileInputFormat.addInputPath(job, inputPath);
 			FileOutputFormat.setOutputPath(job, outputPath);
 			job.waitForCompletion(true);
@@ -216,7 +235,6 @@ public class Problem3v1{
 	public static boolean checkOutput(FileSystem fs,Path  p,Configuration conf) throws IOException{
 		FileStatus[] status = fs.listStatus(p);
 		boolean flag=false;
-		System.out.println(status.length);
 		for (int i=0;i<status.length;i++){
 			
 			if(status[i].getPath().getName().startsWith("part")){
@@ -227,14 +245,16 @@ public class Problem3v1{
 		        line=br.readLine();
 		        while (line != null){
 		                input=line.split(",");
-		                if(input[2]=="1"){
-		                	flag=true;
-		                	break;
+		                System.out.println(input[2]);
+		                if(Integer.parseInt(input[2])==1){
+		                	flag=false;
+		                	return flag;
 		                }
 		                line=br.readLine();
 		        }
 			} 
 		}	
+		flag=true;
 		return flag;
 	}
 		
