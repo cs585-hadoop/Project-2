@@ -234,7 +234,7 @@ public class Problem3v1{
 	}
 	public static boolean checkOutput(FileSystem fs,Path  p,Configuration conf) throws IOException{
 		FileStatus[] status = fs.listStatus(p);
-		boolean flag=false;
+		boolean flag=true;
 		for (int i=0;i<status.length;i++){
 			
 			if(status[i].getPath().getName().startsWith("part")){
@@ -245,16 +245,13 @@ public class Problem3v1{
 		        line=br.readLine();
 		        while (line != null){
 		                input=line.split(",");
-		                System.out.println(input[2]);
 		                if(Integer.parseInt(input[2])==1){
 		                	flag=false;
-		                	return flag;
 		                }
 		                line=br.readLine();
 		        }
 			} 
 		}	
-		flag=true;
 		return flag;
 	}
 		
