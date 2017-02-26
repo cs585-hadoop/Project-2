@@ -6,7 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Random;
 
-public class DataGeneratorKmean {
+public class P3DataGeneratorKmean {
 	static void points(int num,String filename) throws IOException {
 		Random rand = new Random();
 		FileOutputStream fos = new FileOutputStream(new File(filename));
